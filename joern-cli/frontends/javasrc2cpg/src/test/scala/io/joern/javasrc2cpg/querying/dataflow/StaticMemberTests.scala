@@ -1,9 +1,57 @@
 package io.joern.javasrc2cpg.querying.dataflow
 
-import io.joern.javasrc2cpg.testfixtures.JavaDataflowFixture
+import io.joern.javasrc2cpg.testfixtures.{JavaDataflowFixture, JavaSrcCode2CpgFixture}
 import io.joern.dataflowengineoss.language._
+import io.shiftleft.codepropertygraph.generated.nodes.Identifier
 import io.shiftleft.semanticcpg.language._
 import overflowdb.traversal.Traversal
+
+class NewStaticMemberTests extends JavaSrcCode2CpgFixture(withOssDataflow = true) {
+  "dataflow from a tainted member should be found" in {
+    val cpg = code(
+      """
+       |public class Foo {
+       |  public String bad = "MALICIOUS";
+       |
+       |  public static void sink(String s) {}
+       |
+       |  public void foo() {
+       |    String s = this.bad;
+       |    sink(s);
+       |  }
+       |}
+       |""".stripMargin
+    )
+
+    def source = cpg.literal.code("\"MALICIOUS\"")
+
+    def sink = cpg.call.name("sink").argument
+
+    sink.reachableBy(source).size shouldBe 1
+  }
+
+  "dataflow from a tainted static member should be found" in {
+    val cpg = code(
+      """
+			 |public class Foo {
+			 |  public static final String bad = "MALICIOUS";
+			 |
+			 |  public static void sink(String s) {}
+			 |
+			 |  public void foo() {
+			 |    String s = bad;
+			 |    sink(s);
+			 |  }
+			 |}
+			 |""".stripMargin
+    )
+
+    def source = cpg.literal.code("\"MALICIOUS\"")
+    def sink = cpg.call.name("sink").argument
+
+    sink.reachableBy(source).size shouldBe 1
+  }
+}
 
 /** These tests are added as a wishlist for static member accesses. These results are consistent with static members in
   * C++ using c2cgp, however. For practical reasons, only handling `final` static members is probably the way to go, so

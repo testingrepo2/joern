@@ -4,7 +4,7 @@ import io.joern.javasrc2cpg.testfixtures.{JavaDataflowFixture, JavaSrcCode2CpgFi
 import io.joern.dataflowengineoss.language._
 import io.shiftleft.semanticcpg.language._
 
-class NewObjectTests extends JavaSrcCode2CpgFixture {
+class NewObjectTests extends JavaSrcCode2CpgFixture(withOssDataflow = true) {
   "dataflow through object getter" should {
     "be found without explicit field access" in {
       val cpg = code(
@@ -112,7 +112,7 @@ class NewObjectTests extends JavaSrcCode2CpgFixture {
     "be found without explicit field access only in constructor" in {
       val cpg = code(
         """
-         |class Bar {
+         |public class Bar {
          |  public String s;
          |
          |  public Bar(String newS) {

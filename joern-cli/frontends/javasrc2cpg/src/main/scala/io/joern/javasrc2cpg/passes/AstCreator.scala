@@ -2176,53 +2176,15 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
       .orElse(expectedType.map(_.fullName))
       .getOrElse(TypeConstants.UnresolvedType)
 
-    tryWithSafeStackOverflow(nameExpr.resolve()) match {
-      case Success(value) if value.isField =>
-        val identifierName = if (value.asField.isStatic) {
-          // A static field represented by a NameExpr must belong to the class in which it's used. Static fields
-          // from other classes are represented by a FieldAccessExpr instead.
-          scopeStack.getEnclosingTypeDecl.map(_.name).getOrElse(TypeConstants.UnresolvedType)
-        } else {
-          NameConstants.This
-        }
+    val identifier = identifierNode(name, typeFullName, line(nameExpr), column(nameExpr))
 
-        val identifierTypeFullName =
-          value match {
-            case fieldDecl: ResolvedFieldDeclaration =>
-              // TODO It is not quite correct to use the declaring classes type.
-              // Instead we should take the using classes type which is either the same or a
-              // sub class of the declaring class.
-              typeInfoCalc.fullName(fieldDecl.declaringType())
-          }
+    val variableOption = scopeStack
+      .lookupVariable(name)
+      .filter(variableInfo =>
+        variableInfo.node.isInstanceOf[NewMethodParameterIn] || variableInfo.node.isInstanceOf[NewLocal]
+      )
 
-        val identifier = identifierNode(identifierName, identifierTypeFullName, line(nameExpr), column(nameExpr))
-
-        val fieldIdentifier = NewFieldIdentifier()
-          .code(nameExpr.toString)
-          .canonicalName(name)
-          .lineNumber(line(nameExpr))
-          .columnNumber(column(nameExpr))
-
-        val fieldAccess =
-          operatorCallNode(Operators.fieldAccess, name, Some(typeFullName), line(nameExpr), column(nameExpr))
-
-        val identifierAst = Ast(identifier)
-        val fieldIdentAst = Ast(fieldIdentifier)
-
-        callAst(fieldAccess, Seq(identifierAst, fieldIdentAst))
-
-      case _ =>
-        val identifier = identifierNode(name, typeFullName, line(nameExpr), column(nameExpr))
-
-        val variableOption = scopeStack
-          .lookupVariable(name)
-          .filter(variableInfo =>
-            variableInfo.node.isInstanceOf[NewMethodParameterIn] || variableInfo.node.isInstanceOf[NewLocal]
-          )
-
-        variableOption.foldLeft(Ast(identifier))((ast, variableInfo) => ast.withRefEdge(identifier, variableInfo.node))
-    }
-
+    variableOption.foldLeft(Ast(identifier))((ast, variableInfo) => ast.withRefEdge(identifier, variableInfo.node))
   }
 
   private def argumentTypesForMethodLike(
