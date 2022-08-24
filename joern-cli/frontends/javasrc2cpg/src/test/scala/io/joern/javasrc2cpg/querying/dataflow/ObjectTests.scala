@@ -1,8 +1,150 @@
 package io.joern.javasrc2cpg.querying.dataflow
 
-import io.joern.javasrc2cpg.testfixtures.JavaDataflowFixture
+import io.joern.javasrc2cpg.testfixtures.{JavaDataflowFixture, JavaSrcCode2CpgFixture}
 import io.joern.dataflowengineoss.language._
 import io.shiftleft.semanticcpg.language._
+
+class NewObjectTests extends JavaSrcCode2CpgFixture {
+  "dataflow through object getter" should {
+    "be found without explicit field access" in {
+      val cpg = code(
+        """
+         |class Bar {
+         |  public String s;
+         |
+         |  public Bar(String s) {
+         |    this.s = s;
+         |  }
+         |
+         |  public String getS() {
+         |    return s;
+         |  }
+         |}""".stripMargin,
+        fileName = "Bar.java"
+      ).moreCode(
+        """
+         |class Test {
+         |  public static void sink(String s) {}
+         |
+         |  public void test() {
+         |    Bar b = new Bar("MALICIOUS");
+         |    String s = b.getS();
+         |    sink(s);
+         |  }
+         |}
+         |""".stripMargin)
+
+      def source = cpg.method.name("test").literal.code("\"MALICIOUS\"")
+      def sink = cpg.method.name("test").call.name("sink").argument
+
+      sink.reachableBy(source).size shouldBe 1
+    }
+
+    "be found with explicit field access" in {
+      val cpg = code(
+        """
+         |class Bar {
+         |  public String s;
+         |
+         |  public Bar(String s) {
+         |    this.s = s;
+         |  }
+         |
+         |  public String getS() {
+         |    return this.s;
+         |  }
+         |}""".stripMargin,
+        fileName = "Bar.java"
+      ).moreCode(
+        """
+         |class Test {
+         |  public static void sink(String s) {}
+         |
+         |  public void test() {
+         |    Bar b = new Bar("MALICIOUS");
+         |    String s = b.getS();
+         |    sink(s);
+         |  }
+         |}
+         |""".stripMargin)
+
+      def source = cpg.method.name("test").literal.code("\"MALICIOUS\"")
+
+      def sink = cpg.method.name("test").call.name("sink").argument
+
+      sink.reachableBy(source).size shouldBe 1
+    }
+    "be found without explicit field access (also in constructor)" in {
+      val cpg = code(
+        """
+         |class Bar {
+         |  public String s;
+         |
+         |  public Bar(String newS) {
+         |    s = newS;
+         |  }
+         |
+         |  public String getS() {
+         |    return s;
+         |  }
+         |}""".stripMargin,
+        fileName = "Bar.java"
+      ).moreCode(
+        """
+         |class Test {
+         |  public static void sink(String s) {}
+         |
+         |  public void test() {
+         |    Bar b = new Bar("MALICIOUS");
+         |    String s = b.getS();
+         |    sink(s);
+         |  }
+         |}
+         |""".stripMargin)
+
+      def source = cpg.method.name("test").literal.code("\"MALICIOUS\"")
+
+      def sink = cpg.method.name("test").call.name("sink").argument
+
+      sink.reachableBy(source).size shouldBe 1
+    }
+
+    "be found without explicit field access only in constructor" in {
+      val cpg = code(
+        """
+         |class Bar {
+         |  public String s;
+         |
+         |  public Bar(String newS) {
+         |    s = newS;
+         |  }
+         |
+         |  public String getS() {
+         |    return this.s;
+         |  }
+         |}""".stripMargin,
+        fileName = "Bar.java"
+      ).moreCode(
+        """
+         |class Test {
+         |  public static void sink(String s) {}
+         |
+         |  public void test() {
+         |    Bar b = new Bar("MALICIOUS");
+         |    String s = b.getS();
+         |    sink(s);
+         |  }
+         |}
+         |""".stripMargin)
+
+      def source = cpg.method.name("test").literal.code("\"MALICIOUS\"")
+
+      def sink = cpg.method.name("test").call.name("sink").argument
+
+      sink.reachableBy(source).size shouldBe 1
+    }
+  }
+}
 
 class ObjectTests extends JavaDataflowFixture {
 
