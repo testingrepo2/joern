@@ -118,16 +118,10 @@ class ScopeTests extends JavaSrcCodeToCpgFixture {
 
   "it should create field access for simple non-static access as call scope" in {
     cpg.method.name("test8").call.name("toString").argument.l match {
-      case List(fieldAccess: Call) =>
-        fieldAccess.methodFullName shouldBe Operators.fieldAccess
-        fieldAccess.argument.l match {
-          case List(identifier: Identifier, fieldIdentifier: FieldIdentifier) =>
-            identifier.name shouldBe "this"
-            fieldIdentifier.canonicalName shouldBe "o"
-          case res => fail(s"Expected field access args but got $res")
-        }
+      case List(argument: Identifier) =>
+            argument.name shouldBe "o"
 
-      case res => fail(s"Expected field access call but got $res")
+      case res => fail(s"Expected identifier but got $res")
     }
   }
 
@@ -148,16 +142,8 @@ class ScopeTests extends JavaSrcCodeToCpgFixture {
 
   "it should create field access for implicit static member as call scope" in {
     cpg.method.name("test10").call.name("toString").argument.l match {
-      case List(fieldAccess: Call) =>
-        fieldAccess.methodFullName shouldBe Operators.fieldAccess
-        fieldAccess.typeFullName shouldBe "java.lang.Object"
-        fieldAccess.argument.l match {
-          case List(identifier: Identifier, fieldIdentifier: FieldIdentifier) =>
-            identifier.name shouldBe "Test"
-            identifier.typeFullName shouldBe "Test"
-            fieldIdentifier.canonicalName shouldBe "staticO"
-          case res => fail(s"Expected field access args but got $res")
-        }
+      case List(target: Identifier) =>
+          target.name shouldBe "staticO"
 
       case res => fail(s"Expected field access call but got $res")
     }
@@ -183,17 +169,9 @@ class ScopeTests extends JavaSrcCodeToCpgFixture {
       case List(boAccess: Call) =>
         boAccess.methodFullName shouldBe Operators.fieldAccess
         boAccess.argument.l match {
-          case List(bOnlyAccess: Call, oFieldIdentifier: FieldIdentifier) =>
+          case List(bIdentifier: Identifier, oFieldIdentifier: FieldIdentifier) =>
             oFieldIdentifier.canonicalName shouldBe "o"
-
-            bOnlyAccess.methodFullName shouldBe Operators.fieldAccess
-            bOnlyAccess.argument.l match {
-              case List(identifier: Identifier, fieldIdentifier: FieldIdentifier) =>
-                identifier.name shouldBe "this"
-                fieldIdentifier.canonicalName shouldBe "b"
-
-              case res => fail(s"Expected identifier and field Identifier for this.b access but got $res")
-            }
+            bIdentifier.name shouldBe "b"
 
           case res => fail(s"Expected field access call but got $res")
         }
