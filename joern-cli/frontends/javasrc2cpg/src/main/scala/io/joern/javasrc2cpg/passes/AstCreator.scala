@@ -335,7 +335,7 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
     val maybeParameterTypes = calcParameterTypes(method, typeParamValues)
 
     val maybeReturnType =
-      Try(method.getReturnType).toOption
+      tryWithSafeStackOverflow(method.getReturnType).toOption
         .flatMap(returnType => typeInfoCalc.fullName(returnType, typeParamValues))
 
     composeSignature(maybeReturnType, maybeParameterTypes, method.getNumberOfParams)
@@ -358,14 +358,14 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
           Try(methodLike.getParam(index)).toOption
         }
         .map { param =>
-          Try(param.getType).toOption
+          tryWithSafeStackOverflow(param.getType).toOption
             .flatMap(paramType => typeInfoCalc.fullName(paramType, typeParamValues))
         }
 
     toOptionList(parameterTypes)
   }
 
-  def getBindingTable(typeDecl: ResolvedReferenceTypeDeclaration): BindingTable = {
+    def getBindingTable(typeDecl: ResolvedReferenceTypeDeclaration): BindingTable = {
     val fullName = typeInfoCalc.fullName(typeDecl).getOrElse {
       val qualifiedName = typeDecl.getQualifiedName
       logger.warn(s"Could not get full name for resolved type decl $qualifiedName. THIS SHOULD NOT HAPPEN!")
@@ -373,12 +373,13 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
     }
     bindingTableCache.getOrElseUpdate(
       fullName,
-      createBindingTable(
+      createBindingTable[ResolvedReferenceTypeDeclaration](
         fullName,
         typeDecl,
         getBindingTable,
         methodSignature,
-        new BindingTableAdapterForJavaparser(methodSignature)
+        new BindingTableAdapterForJavaparser(methodSignature),
+        (parentDecl, thisDecl) => thisDecl.getQualifiedName == parentDecl.getQualifiedName
       )
     )
   }
@@ -388,12 +389,13 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
 
     bindingTableCache.getOrElseUpdate(
       fullName,
-      createBindingTable(
+      createBindingTable[LambdaBindingInfo](
         fullName,
         lambdaBindingInfo,
         getBindingTable,
         methodSignature,
-        new BindingTableAdapterForLambdas()
+        new BindingTableAdapterForLambdas(),
+        (parentDecl, thisInfo) => parentDecl.getQualifiedName == thisInfo.fullName
       )
     )
   }
@@ -993,7 +995,7 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
   private def astForMethod(methodDeclaration: MethodDeclaration): Ast = {
 
     val maybeResolved = tryWithSafeStackOverflow(methodDeclaration.resolve())
-    val expectedReturnType = Try(
+    val expectedReturnType = tryWithSafeStackOverflow(
       symbolResolver.toResolvedType(methodDeclaration.getType, classOf[ResolvedType])
     ).toOption
     val returnTypeFullName = expectedReturnType
@@ -2002,7 +2004,7 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
       case Operator.UNSIGNED_RIGHT_SHIFT => Operators.assignmentLogicalShiftRight
     }
 
-    val maybeResolvedType = Try(expr.getTarget.calculateResolvedType()).toOption
+    val maybeResolvedType = tryWithSafeStackOverflow(expr.getTarget.calculateResolvedType()).toOption
     val expectedType = maybeResolvedType
       .map { resolvedType =>
         ExpectedType(typeInfoCalc.fullName(resolvedType), Some(resolvedType))
@@ -2113,7 +2115,7 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
         variableTypeFullName.orElse(initializerTypeFullName)
 
       // Need the actual resolvedType here for when the RHS is a lambda expression.
-      val resolvedExpectedType = Try(symbolResolver.toResolvedType(variable.getType, classOf[ResolvedType])).toOption
+      val resolvedExpectedType = tryWithSafeStackOverflow(symbolResolver.toResolvedType(variable.getType, classOf[ResolvedType])).toOption
       val initializerAsts      = astsForExpression(initializer, ExpectedType(typeFullName, resolvedExpectedType))
 
       val typeName = typeFullName

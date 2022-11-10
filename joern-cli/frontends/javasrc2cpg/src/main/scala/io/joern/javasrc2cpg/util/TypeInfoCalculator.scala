@@ -161,8 +161,11 @@ class TypeInfoCalculator(global: Global, symbolResolver: SymbolResolver) {
         // bound (ResolvedReferenceType.class) which invalidates an otherwise successful
         // resolve. Since we anyway dont care about the type cast, we directly access the
         // symbolResolver and specifiy the most generic type ResolvedType.
-        Try(symbolResolver.toResolvedType(typ, classOf[ResolvedType])).toOption
+        try{Try(symbolResolver.toResolvedType(typ, classOf[ResolvedType])).toOption
           .flatMap(resolvedType => nameOrFullName(resolvedType, emptyTypeParamValues, fullyQualified))
+        } catch {
+          case e: StackOverflowError => None
+        }
     }
   }
 

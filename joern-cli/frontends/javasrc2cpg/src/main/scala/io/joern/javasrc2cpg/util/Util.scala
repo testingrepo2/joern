@@ -33,7 +33,7 @@ object Util {
     val result = mutable.ArrayBuffer.empty[ResolvedReferenceType]
 
     if (!typeDecl.isJavaLangObject) {
-      safeGetAncestors(typeDecl).foreach { ancestor =>
+      safeGetAncestors(typeDecl).filter(_.getQualifiedName != typeDecl.getQualifiedName).foreach { ancestor =>
         result.append(ancestor)
         getAllParents(ancestor, result)
       }
