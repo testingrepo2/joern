@@ -37,8 +37,8 @@ class AstCreationPass(sourceInfo: SourceDirectoryInfo, config: Config, cpg: Cpg,
 
   override def runOnPart(diffGraph: DiffGraphBuilder, fileInfo: SourceFileInfo): Unit = {
     val parserConfig =
-      new ParserConfiguration().setLanguageLevel(LanguageLevel.CURRENT)
-      //new ParserConfiguration().setSymbolResolver(symbolResolver).setLanguageLevel(LanguageLevel.CURRENT)
+      //new ParserConfiguration().setLanguageLevel(LanguageLevel.CURRENT)
+      new ParserConfiguration().setSymbolResolver(symbolResolver).setLanguageLevel(LanguageLevel.CURRENT)
     val parser      = new JavaParser(parserConfig)
     val parseResult = parser.parse(new java.io.File(fileInfo.analysisFileName))
 
@@ -87,21 +87,21 @@ class AstCreationPass(sourceInfo: SourceDirectoryInfo, config: Config, cpg: Cpg,
 
   private def createSymbolSolver(): JavaSymbolSolver = {
     val combinedTypeSolver   = new CombinedTypeSolver()
-    val reflectionTypeSolver = new CachingReflectionTypeSolver()
-    combinedTypeSolver.add(reflectionTypeSolver)
+    // val reflectionTypeSolver = new CachingReflectionTypeSolver()
+    // combinedTypeSolver.add(reflectionTypeSolver)
 
     // Add solvers for all detected sources roots
-    sourceInfo.typeSolverSourceDirs.foreach { srcDir =>
-      val javaParserTypeSolver = new JavaParserTypeSolver(srcDir)
-      combinedTypeSolver.add(javaParserTypeSolver)
-    }
+    // sourceInfo.typeSolverSourceDirs.foreach { srcDir =>
+    //   val javaParserTypeSolver = new JavaParserTypeSolver(srcDir)
+    //   combinedTypeSolver.add(javaParserTypeSolver)
+    // }
 
-    // Add solvers for inference jars
-    (jarsList ++ dependencies)
-      .flatMap { path =>
-        Try(new JarTypeSolver(path)).toOption
-      }
-      .foreach { combinedTypeSolver.add(_) }
+    // // Add solvers for inference jars
+    // (jarsList ++ dependencies)
+    //   .flatMap { path =>
+    //     Try(new JarTypeSolver(path)).toOption
+    //   }
+    //   .foreach { combinedTypeSolver.add(_) }
 
     new JavaSymbolSolver(combinedTypeSolver)
   }
