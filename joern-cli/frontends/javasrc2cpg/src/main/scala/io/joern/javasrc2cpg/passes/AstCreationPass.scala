@@ -19,6 +19,7 @@ import io.joern.x2cpg.utils.dependency.DependencyResolver
 import org.slf4j.LoggerFactory
 
 import java.nio.file.Paths
+import java.util.concurrent.atomic.AtomicInteger
 import scala.jdk.OptionConverters.RichOptional
 import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
@@ -29,12 +30,15 @@ class AstCreationPass(sourceInfo: SourceDirectoryInfo, config: Config, cpg: Cpg,
   val global: Global              = new Global()
   private val logger              = LoggerFactory.getLogger(classOf[AstCreationPass])
   lazy private val symbolResolver = createSymbolSolver()
+  private val finished = new AtomicInteger(0)
+  private val initTime = System.nanoTime()
 
   override def generateParts(): Array[SourceFileInfo] = sourceInfo.sourceFiles.toArray
 
   override def runOnPart(diffGraph: DiffGraphBuilder, fileInfo: SourceFileInfo): Unit = {
     val parserConfig =
-      new ParserConfiguration().setSymbolResolver(symbolResolver).setLanguageLevel(LanguageLevel.CURRENT)
+      new ParserConfiguration().setLanguageLevel(LanguageLevel.CURRENT)
+      //new ParserConfiguration().setSymbolResolver(symbolResolver).setLanguageLevel(LanguageLevel.CURRENT)
     val parser      = new JavaParser(parserConfig)
     val parseResult = parser.parse(new java.io.File(fileInfo.analysisFileName))
 
@@ -52,6 +56,12 @@ class AstCreationPass(sourceInfo: SourceDirectoryInfo, config: Config, cpg: Cpg,
         diffGraph.absorb(new AstCreator(fileInfo.originalFileName, result, global, symbolResolver).createAst())
       case _ =>
         logger.warn("Failed to parse file " + fileInfo.analysisFileName)
+    }
+
+    if (finished.addAndGet(1) % 250 == 0) {
+      val timeNow = System.nanoTime()
+      logger.info(s"Finished ${finished}")
+      logger.info(s"Elapsed: ${(timeNow-initTime)/1000000000.0}")
     }
   }
 
