@@ -2,159 +2,26 @@ package io.joern.javasrc2cpg.passes
 
 import com.github.javaparser.ast.`type`.TypeParameter
 import com.github.javaparser.ast.{CompilationUnit, Node, NodeList, PackageDeclaration}
-import com.github.javaparser.ast.body.{
-  AnnotationDeclaration,
-  BodyDeclaration,
-  CallableDeclaration,
-  ClassOrInterfaceDeclaration,
-  ConstructorDeclaration,
-  EnumConstantDeclaration,
-  FieldDeclaration,
-  InitializerDeclaration,
-  MethodDeclaration,
-  Parameter,
-  TypeDeclaration,
-  VariableDeclarator
-}
+import com.github.javaparser.ast.body.{AnnotationDeclaration, BodyDeclaration, CallableDeclaration, ClassOrInterfaceDeclaration, ConstructorDeclaration, EnumConstantDeclaration, FieldDeclaration, InitializerDeclaration, MethodDeclaration, Parameter, TypeDeclaration, VariableDeclarator}
 import com.github.javaparser.ast.expr.AssignExpr.Operator
-import com.github.javaparser.ast.expr.{
-  AnnotationExpr,
-  ArrayAccessExpr,
-  ArrayCreationExpr,
-  ArrayInitializerExpr,
-  AssignExpr,
-  BinaryExpr,
-  BooleanLiteralExpr,
-  CastExpr,
-  CharLiteralExpr,
-  ClassExpr,
-  ConditionalExpr,
-  DoubleLiteralExpr,
-  EnclosedExpr,
-  Expression,
-  FieldAccessExpr,
-  InstanceOfExpr,
-  IntegerLiteralExpr,
-  LambdaExpr,
-  LiteralExpr,
-  LongLiteralExpr,
-  MarkerAnnotationExpr,
-  MethodCallExpr,
-  NameExpr,
-  NormalAnnotationExpr,
-  NullLiteralExpr,
-  ObjectCreationExpr,
-  SingleMemberAnnotationExpr,
-  StringLiteralExpr,
-  SuperExpr,
-  TextBlockLiteralExpr,
-  ThisExpr,
-  UnaryExpr,
-  VariableDeclarationExpr
-}
+import com.github.javaparser.ast.expr.{AnnotationExpr, ArrayAccessExpr, ArrayCreationExpr, ArrayInitializerExpr, AssignExpr, BinaryExpr, BooleanLiteralExpr, CastExpr, CharLiteralExpr, ClassExpr, ConditionalExpr, DoubleLiteralExpr, EnclosedExpr, Expression, FieldAccessExpr, InstanceOfExpr, IntegerLiteralExpr, LambdaExpr, LiteralExpr, LongLiteralExpr, MarkerAnnotationExpr, MethodCallExpr, NameExpr, NormalAnnotationExpr, NullLiteralExpr, ObjectCreationExpr, SingleMemberAnnotationExpr, StringLiteralExpr, SuperExpr, TextBlockLiteralExpr, ThisExpr, UnaryExpr, VariableDeclarationExpr}
 import com.github.javaparser.ast.nodeTypes.{NodeWithName, NodeWithSimpleName}
-import com.github.javaparser.ast.stmt.{
-  AssertStmt,
-  BlockStmt,
-  BreakStmt,
-  CatchClause,
-  ContinueStmt,
-  DoStmt,
-  EmptyStmt,
-  ExplicitConstructorInvocationStmt,
-  ExpressionStmt,
-  ForEachStmt,
-  ForStmt,
-  IfStmt,
-  LabeledStmt,
-  ReturnStmt,
-  Statement,
-  SwitchEntry,
-  SwitchStmt,
-  SynchronizedStmt,
-  ThrowStmt,
-  TryStmt,
-  WhileStmt
-}
+import com.github.javaparser.ast.stmt.{AssertStmt, BlockStmt, BreakStmt, CatchClause, ContinueStmt, DoStmt, EmptyStmt, ExplicitConstructorInvocationStmt, ExpressionStmt, ForEachStmt, ForStmt, IfStmt, LabeledStmt, LocalClassDeclarationStmt, ReturnStmt, Statement, SwitchEntry, SwitchStmt, SynchronizedStmt, ThrowStmt, TryStmt, WhileStmt}
 import com.github.javaparser.resolution.{SymbolResolver, UnsolvedSymbolException}
-import com.github.javaparser.resolution.declarations.{
-  ResolvedFieldDeclaration,
-  ResolvedMethodDeclaration,
-  ResolvedMethodLikeDeclaration,
-  ResolvedReferenceTypeDeclaration,
-  ResolvedTypeParameterDeclaration
-}
+import com.github.javaparser.resolution.declarations.{ResolvedFieldDeclaration, ResolvedMethodDeclaration, ResolvedMethodLikeDeclaration, ResolvedReferenceTypeDeclaration, ResolvedTypeParameterDeclaration}
 import com.github.javaparser.resolution.types.parametrization.ResolvedTypeParametersMap
 import com.github.javaparser.resolution.types.{ResolvedReferenceType, ResolvedType, ResolvedTypeVariable}
 import com.github.javaparser.symbolsolver.JavaSymbolSolver
 import io.joern.javasrc2cpg.typesolvers.TypeInfoCalculator
 import io.joern.javasrc2cpg.util.BindingTable.createBindingTable
-import io.joern.x2cpg.utils.NodeBuilders.{
-  annotationLiteralNode,
-  callNode,
-  fieldIdentifierNode,
-  identifierNode,
-  modifierNode,
-  operatorCallNode
-}
+import io.joern.x2cpg.utils.NodeBuilders.{annotationLiteralNode, callNode, fieldIdentifierNode, identifierNode, modifierNode, operatorCallNode}
 import io.joern.javasrc2cpg.util.Scope.ScopeTypes.{BlockScope, MethodScope, NamespaceScope, TypeDeclScope}
 import io.joern.javasrc2cpg.util.Scope.WildcardImportName
-import io.joern.javasrc2cpg.util.{
-  BindingTable,
-  BindingTableAdapterForJavaparser,
-  BindingTableAdapterForLambdas,
-  BindingTableEntry,
-  LambdaBindingInfo,
-  NameConstants,
-  NodeTypeInfo,
-  Scope
-}
+import io.joern.javasrc2cpg.util.{BindingTable, BindingTableAdapterForJavaparser, BindingTableAdapterForLambdas, BindingTableEntry, LambdaBindingInfo, NameConstants, NodeTypeInfo, Scope}
 import io.joern.javasrc2cpg.typesolvers.TypeInfoCalculator.{ObjectMethodSignatures, TypeConstants}
-import io.joern.javasrc2cpg.util.Util.{
-  composeMethodFullName,
-  composeMethodLikeSignature,
-  composeUnresolvedSignature,
-  memberNode,
-  rootCode,
-  rootType
-}
-import io.shiftleft.codepropertygraph.generated.{
-  ControlStructureTypes,
-  DispatchTypes,
-  EdgeTypes,
-  EvaluationStrategies,
-  ModifierTypes,
-  NodeTypes,
-  Operators
-}
-import io.shiftleft.codepropertygraph.generated.nodes.{
-  NewAnnotation,
-  NewAnnotationParameter,
-  NewAnnotationParameterAssign,
-  NewArrayInitializer,
-  NewBinding,
-  NewBlock,
-  NewCall,
-  NewClosureBinding,
-  NewControlStructure,
-  NewFieldIdentifier,
-  NewIdentifier,
-  NewJumpTarget,
-  NewLiteral,
-  NewLocal,
-  NewMember,
-  NewMethod,
-  NewMethodParameterIn,
-  NewMethodRef,
-  NewMethodReturn,
-  NewModifier,
-  NewNamespaceBlock,
-  NewNode,
-  NewReturn,
-  NewTypeDecl,
-  NewTypeRef,
-  NewUnknown
-}
+import io.joern.javasrc2cpg.util.Util.{composeMethodFullName, composeMethodLikeSignature, composeUnresolvedSignature, memberNode, rootCode, rootType}
+import io.shiftleft.codepropertygraph.generated.{ControlStructureTypes, DispatchTypes, EdgeTypes, EvaluationStrategies, ModifierTypes, NodeTypes, Operators}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewAnnotation, NewAnnotationParameter, NewAnnotationParameterAssign, NewArrayInitializer, NewBinding, NewBlock, NewCall, NewClosureBinding, NewControlStructure, NewFieldIdentifier, NewIdentifier, NewJumpTarget, NewLiteral, NewLocal, NewMember, NewMethod, NewMethodParameterIn, NewMethodRef, NewMethodReturn, NewModifier, NewNamespaceBlock, NewNode, NewReturn, NewTypeDecl, NewTypeRef, NewUnknown}
 import io.joern.x2cpg.{Ast, AstCreatorBase, Defines}
 import io.joern.x2cpg.datastructures.Global
 import io.joern.x2cpg.passes.frontend.TypeNodePass
@@ -1174,6 +1041,8 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
     statement match {
       case x: ExplicitConstructorInvocationStmt =>
         Seq(astForExplicitConstructorInvocation(x))
+      case x: LocalClassDeclarationStmt =>
+        Seq(astForLocalClassDeclaration(x))
       case x: AssertStmt       => Seq(astForAssertStatement(x))
       case x: BlockStmt        => Seq(astForBlockStatement(x))
       case x: BreakStmt        => Seq(astForBreakStatement(x))
@@ -2531,6 +2400,16 @@ class AstCreator(filename: String, javaParserAst: CompilationUnit, global: Globa
     val thisAst = Ast(thisNode)
 
     callAst(callRoot, args, Some(thisAst), withRecvArgEdge = true)
+  }
+
+  private def astForLocalClassDeclaration(stmt: LocalClassDeclarationStmt): Ast = {
+    val maybeResolved = tryWithSafeStackOverflow(stmt.getClassDeclaration.resolve())
+
+    val capturedDecl = thisNodeForMethod(scopeStack.getEnclosingTypeDecl.map(_.fullName), lineNumber = None)
+    val capturedVars = scopeStack.getCapturedVariables
+    val typeDeclAst = astForTypeDecl(stmt.getClassDeclaration, astParentType = "TODO", astParentFullName = "TODO")
+
+    Ast()
   }
 
   private def astsForExpression(expression: Expression, expectedType: ExpectedType): Seq[Ast] = {
