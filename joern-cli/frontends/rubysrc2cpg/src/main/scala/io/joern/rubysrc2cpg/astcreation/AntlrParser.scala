@@ -2,7 +2,7 @@ package io.joern.rubysrc2cpg.astcreation
 
 import io.joern.rubysrc2cpg.parser.{RubyLexer, RubyLexerPostProcessor, RubyParser}
 import org.antlr.v4.runtime.*
-import org.antlr.v4.runtime.atn.ATN
+import org.antlr.v4.runtime.atn.{ATN, PredictionMode}
 import org.antlr.v4.runtime.dfa.DFA
 import org.slf4j.LoggerFactory
 
@@ -22,6 +22,9 @@ class AntlrParser(filename: String) {
   private val lexer       = new RubyLexer(charStream)
   private val tokenStream = new CommonTokenStream(RubyLexerPostProcessor(lexer))
   val parser: RubyParser  = new RubyParser(tokenStream)
+  
+  //parser.getInterpreter.setPredictionMode(PredictionMode.SLL)
+  parser.removeErrorListeners()
 
   def parse(): Try[RubyParser.ProgramContext] = Try(parser.program())
 }

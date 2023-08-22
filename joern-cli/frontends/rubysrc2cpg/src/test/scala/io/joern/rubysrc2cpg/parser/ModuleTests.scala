@@ -8,7 +8,7 @@ class ModuleTests extends RubyParserAbstractTest {
 
       "defined in a single line" in {
         val code = """module Bar; end"""
-        printAst(_.moduleDefinition(), code) shouldEqual
+        printAst(_.program(), code) shouldEqual
           """ModuleDefinition
             | module
             | ClassOrModuleReference

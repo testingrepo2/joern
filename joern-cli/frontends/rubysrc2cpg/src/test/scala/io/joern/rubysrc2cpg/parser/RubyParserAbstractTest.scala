@@ -1,8 +1,11 @@
 package io.joern.rubysrc2cpg.parser
 
+import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import java.util
 import java.util.stream.Collectors
 
 // TODO: Should share the same lexer/token stream/parser as the frontend itself.
@@ -12,8 +15,10 @@ abstract class RubyParserAbstractTest extends AnyWordSpec with Matchers {
   def rubyStream(code: String): CommonTokenStream =
     new CommonTokenStream(RubyLexerPostProcessor(new RubyLexer(CharStreams.fromString(code))))
 
-  def rubyParser(code: String): RubyParser =
-    new RubyParser(rubyStream(code))
+  def rubyParser(code: String): RubyParser = {
+    val parser = new RubyParser(rubyStream(code))
+    parser
+  }
 
   def printAst(withContext: RubyParser => ParserRuleContext, input: String): String =
     omitWhitespaceLines(AstPrinter.print(withContext(rubyParser(input))))

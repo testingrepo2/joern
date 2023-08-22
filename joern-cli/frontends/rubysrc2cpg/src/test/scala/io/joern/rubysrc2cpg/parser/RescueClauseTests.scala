@@ -13,7 +13,7 @@ class RescueClauseTests extends RubyParserAbstractTest {
             |rescue ZeroDivisionError => e
             |end""".stripMargin
 
-        printAst(_.beginExpression(), code) shouldEqual
+        printAst(_.program(), code) shouldEqual
           """BeginExpression
             | begin
             | BodyStatement
@@ -60,7 +60,7 @@ class RescueClauseTests extends RubyParserAbstractTest {
             |rescue ZeroDivisionError => e
             |end""".stripMargin
 
-        printAst(_.methodDefinition(), code) shouldEqual
+        printAst(_.program(), code) shouldEqual
           """MethodDefinition
             | def
             | SimpleMethodNamePart

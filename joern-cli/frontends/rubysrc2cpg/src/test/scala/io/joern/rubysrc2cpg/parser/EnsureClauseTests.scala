@@ -12,7 +12,7 @@ class EnsureClauseTests extends RubyParserAbstractTest {
             |  ensure
             |    redirect_to paddle_charge_path(@charge)
             |end""".stripMargin
-        printAst(_.methodDefinition(), code) shouldEqual
+        printAst(_.program(), code) shouldEqual
           """MethodDefinition
             | def
             | SimpleMethodNamePart

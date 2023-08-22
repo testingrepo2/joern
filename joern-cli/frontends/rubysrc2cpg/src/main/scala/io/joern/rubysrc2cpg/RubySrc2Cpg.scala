@@ -74,8 +74,8 @@ object RubySrc2Cpg {
     List(
       // TODO commented below two passes, as waiting on Dependency download PR to get merged
       new ImportResolverPass(cpg, packageTableInfo),
-      new RubyTypeRecoveryPass(cpg),
-      new RubyTypeHintCallLinker(cpg),
+//      new RubyTypeRecoveryPass(cpg),
+//      new RubyTypeHintCallLinker(cpg),
       new NaiveCallLinker(cpg),
 
       // Some of passes above create new methods, so, we

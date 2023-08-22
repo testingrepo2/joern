@@ -929,5 +929,4 @@ class MethodDefinitionTests extends RubyParserAbstractTest {
           |  end""".stripMargin
     }
   }
-
 }

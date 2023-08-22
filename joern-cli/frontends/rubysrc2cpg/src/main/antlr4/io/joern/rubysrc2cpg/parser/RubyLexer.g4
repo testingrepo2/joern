@@ -478,7 +478,7 @@ fragment HEXADECIMAL_DIGIT
 // --------------------------------------------------------
 
 NL: LINE_TERMINATOR+;
-WS: WHITESPACE+;
+WS: WHITESPACE+ -> channel(HIDDEN);
 
 fragment WHITESPACE
     :   [\u0009]
@@ -536,6 +536,31 @@ LOCAL_VARIABLE_IDENTIFIER
 GLOBAL_VARIABLE_IDENTIFIER
     :   '$' IDENTIFIER_START_CHARACTER IDENTIFIER_CHARACTER*
     |   '$' [0-9]+
+    |   '$!'
+    |   '$@'
+    |   '$~'
+    |   '$&'
+    |   '$`'
+    |   '$\''
+    |   '$+'
+    |   '$='
+    |   '$/'
+    |   '$\\'
+    |   '$,'
+    |   '$;'
+    |   '$.'
+    |   '$:'
+    |   '$<'
+    |   '$>'
+    |   '$_'
+    |   '$0'
+    |   '$*'
+    |   '$$'
+    |   '$?'
+    |   '$-a'
+    |   '$-i'
+    |   '$-l'
+    |   '$-p'
     ;
 
 INSTANCE_VARIABLE_IDENTIFIER
@@ -565,6 +590,7 @@ ASSIGNMENT_LIKE_METHOD_IDENTIFIER
 fragment IDENTIFIER_CHARACTER
     :   IDENTIFIER_START_CHARACTER
     |   DECIMAL_DIGIT
+    |   '_'
     ;
 
 fragment IDENTIFIER_START_CHARACTER
