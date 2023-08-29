@@ -83,7 +83,7 @@ methodOnlyIdentifier
     
 methodInvocationWithoutParentheses
     :   command
-    |   chainedCommandWithDoBlock ((DOT | COLON2) methodName primaryValueList)?
+    |   chainedCommandWithDoBlock ((DOT | COLON2) methodName commandArgumentList)?
     |   RETURN primaryValueList
     |   BREAK primaryValueList
     |   NEXT primaryValueList
@@ -91,8 +91,8 @@ methodInvocationWithoutParentheses
     ;
 
 command
-    :   primary NL? (DOT | COLON2) methodName (command | primaryValueList)
-    |   methodIdentifier (command | primaryValueList)
+    :   primary NL? (DOT | COLON2) methodName (command | commandArgumentList)
+    |   methodIdentifier (command | commandArgumentList)
     ;
 
 chainedCommandWithDoBlock
@@ -149,6 +149,11 @@ argumentList
     |   command
     ;
     
+commandArgumentList
+    :   associationList
+    |   primaryValueList (COMMA NL* associationList)?
+    ;    
+
 primaryValueList
     :   primaryValue (COMMA NL* primaryValue)*
     ;
