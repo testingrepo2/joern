@@ -382,6 +382,7 @@ primaryValue
     |   primaryValue andOperator=AMP2       NL* primaryValue
     |   primaryValue orOperator=BAR2        NL* primaryValue
     |   primaryValue rangeOperator          NL* primaryValue
+    |   primaryValue (AND|OR) NL* primaryValue
     ;
 
 primary
@@ -503,7 +504,7 @@ associationList
     ;
     
 association
-    :   operatorExpression (EQGT | COLON) NL* operatorExpression
+    :   (operatorExpression|keyword) (EQGT | COLON) NL* operatorExpression
     ;
 
 // --------------------------------------------------------
