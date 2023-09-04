@@ -382,6 +382,7 @@ primaryValue
     |   primaryValue andOperator=AMP2       NL* primaryValue
     |   primaryValue orOperator=BAR2        NL* primaryValue
     |   primaryValue rangeOperator          NL* primaryValue
+    |   NOT primaryValue
     |   primaryValue (AND|OR) NL* primaryValue
     ;
 
