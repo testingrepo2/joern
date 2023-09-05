@@ -535,8 +535,9 @@ methodParameterPart
     ;
 
 parameterList
-    :   mandatoryOrOptionalParameterList (COMMA NL* arrayParameter)? (COMMA NL* procParameter)?
-    |   arrayParameter (COMMA NL* procParameter)?
+    :   mandatoryOrOptionalParameterList (COMMA NL* arrayParameter)? (COMMA NL* hashParameter)? (COMMA NL* procParameter)?
+    |   arrayParameter (COMMA NL* hashParameter)? (COMMA NL* procParameter)?
+    |   hashParameter (COMMA NL* procParameter)?
     |   procParameter
     ;
 
@@ -557,12 +558,11 @@ optionalParameterName
     ;
 
 arrayParameter
-    :   STAR arrayParameterName
-    |   STAR
+    :   STAR LOCAL_VARIABLE_IDENTIFIER?
     ;
 
-arrayParameterName
-    :   LOCAL_VARIABLE_IDENTIFIER
+hashParameter
+    :   STAR2 LOCAL_VARIABLE_IDENTIFIER?
     ;
 
 procParameter
