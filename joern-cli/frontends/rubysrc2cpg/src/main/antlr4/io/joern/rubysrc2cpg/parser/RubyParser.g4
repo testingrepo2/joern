@@ -92,7 +92,7 @@ methodInvocationWithoutParentheses
     ;
 
 command
-    :   primary NL? (DOT | COLON2) methodName (command | commandArgumentList)
+    :   primary NL? (AMPDOT | DOT | COLON2) methodName (command | commandArgumentList)
     |   methodIdentifier (command | commandArgumentList)
     ;
 
