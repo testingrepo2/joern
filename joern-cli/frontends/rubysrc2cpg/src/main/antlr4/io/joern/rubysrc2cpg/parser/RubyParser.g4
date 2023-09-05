@@ -173,7 +173,7 @@ block
     ;
 
 doBlock
-    :   DO NL* blockParameter? compoundStatement END
+    :   DO NL* blockParameter? bodyStatement END
     ;
 
 blockParameter
