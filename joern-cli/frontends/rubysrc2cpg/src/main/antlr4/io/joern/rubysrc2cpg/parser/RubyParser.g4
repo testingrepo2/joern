@@ -255,11 +255,9 @@ assignmentOperator
 
 singleAssignmentStatement
     :   variable assignmentOperator NL* methodInvocationWithoutParentheses
-    |   primary COLON2 CONSTANT_IDENTIFIER assignmentOperator NL* methodInvocationWithoutParentheses
     |   COLON2 CONSTANT_IDENTIFIER assignmentOperator NL* methodInvocationWithoutParentheses
     |   primary LBRACK indexingArgumentList? RBRACK assignmentOperator NL* methodInvocationWithoutParentheses
     |   primary (DOT | COLON2) methodName assignmentOperator NL* methodInvocationWithoutParentheses
-    |   primary DOT CONSTANT_IDENTIFIER assignmentOperator NL* methodInvocationWithoutParentheses
     ;
 
 // --------------------------------------------------------
