@@ -75,6 +75,7 @@ methodIdentifier
 methodName
     :   methodIdentifier
     |   keyword
+    |   pseudoVariable
     ;
 
 methodOnlyIdentifier
