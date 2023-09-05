@@ -321,11 +321,9 @@ splattingRightHandSide
 
 primaryValue
     :   variable assignmentOperator NL* operatorExpression
-    |   primaryValue COLON2 CONSTANT_IDENTIFIER assignmentOperator NL* operatorExpression
+    |   primaryValue (DOT | COLON2) methodName assignmentOperator NL* operatorExpression
     |   COLON2 CONSTANT_IDENTIFIER assignmentOperator NL* operatorExpression
     |   primaryValue LBRACK indexingArgumentList? RBRACK assignmentOperator NL* operatorExpression
-    |   primaryValue (DOT | COLON2) methodName assignmentOperator NL* operatorExpression
-    |   primaryValue DOT CONSTANT_IDENTIFIER assignmentOperator NL* operatorExpression
     |   primaryValue assignmentOperator NL* operatorExpression RESCUE operatorExpression
     |   IF NL* (command | primaryValue) thenClause elsifClause* elseClause? END
     |   UNLESS NL* (command | primaryValue) thenClause elseClause? END
