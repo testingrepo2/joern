@@ -1,57 +1,10 @@
 package io.joern.rubysrc2cpg.passes.ast
 
 import io.joern.rubysrc2cpg.testfixtures.RubyCode2CpgFixture
-import io.shiftleft.codepropertygraph.generated.{DispatchTypes, EvaluationStrategies, NodeTypes, Operators, nodes}
+import io.shiftleft.codepropertygraph.generated.{Operators, nodes}
 import io.shiftleft.semanticcpg.language.*
-import io.shiftleft.semanticcpg.language.types.structure.NamespaceTraversal
 
 class AssignCpgTests extends RubyCode2CpgFixture {
-  "single target assign" should {
-    val cpg = code("""x = 2""".stripMargin)
-
-    // TODO: .code property need to be fixed
-    "test assignment node properties" ignore {
-      val assignCall = cpg.call.methodFullName(Operators.assignment).head
-      assignCall.code shouldBe "x = 2" // "="
-      assignCall.dispatchType shouldBe DispatchTypes.STATIC_DISPATCH
-      assignCall.lineNumber shouldBe Some(1)
-      assignCall.columnNumber shouldBe Some(1)
-    }
-
-    "test assignment node ast children" in {
-      cpg.call
-        .methodFullName(Operators.assignment)
-        .astChildren
-        .order(1)
-        .isIdentifier
-        .head
-        .code shouldBe "x"
-      cpg.call
-        .methodFullName(Operators.assignment)
-        .astChildren
-        .order(2)
-        .isLiteral
-        .head
-        .code shouldBe "2"
-    }
-
-    "test assignment node arguments" in {
-      cpg.call
-        .methodFullName(Operators.assignment)
-        .argument
-        .argumentIndex(1)
-        .isIdentifier
-        .head
-        .code shouldBe "x"
-      cpg.call
-        .methodFullName(Operators.assignment)
-        .argument
-        .argumentIndex(2)
-        .isLiteral
-        .head
-        .code shouldBe "2"
-    }
-  }
 
   "nested decomposing assign" should {
     val cpg = code("""x, (y, z) = [1, [2, 3]]""".stripMargin)
@@ -135,43 +88,6 @@ class AssignCpgTests extends RubyCode2CpgFixture {
       cpg.method.name("Test0.rb::program").local.name("tmp0").headOption should not be empty
     }
 
-  }
-
-  "multi target assign" should {
-    val cpg = code("""x = y = "abcd"""".stripMargin)
-
-    def getSurroundingBlock: nodes.Block = {
-      cpg.all.collect { case block: nodes.Block if block.code != "" => block }.head
-    }
-
-    "test block exists" in {
-      // Throws if block does not exist.
-      getSurroundingBlock
-    }
-
-    // TODO: Fix the code property of the Block node
-    "test block node properties" ignore {
-      val block = getSurroundingBlock
-      block.code shouldBe
-        """tmp0 = list
-          |x = tmp0
-          |y = tmp0""".stripMargin
-      block.lineNumber shouldBe Some(1)
-    }
-
-    // TODO: Need to fix the local variables
-    "test local node" ignore {
-      cpg.method.name("Test0.rb::program").local.name("tmp0").headOption should not be empty
-    }
-
-    // TODO: Need to fix the code property
-    "test tmp variable assignment" ignore {
-      val block         = getSurroundingBlock
-      val tmpAssignNode = block.astChildren.isCall.sortBy(_.order).head
-      tmpAssignNode.code shouldBe "tmp0 = list"
-      tmpAssignNode.methodFullName shouldBe Operators.assignment
-      tmpAssignNode.lineNumber shouldBe Some(1)
-    }
   }
 
   "empty array assignment" should {

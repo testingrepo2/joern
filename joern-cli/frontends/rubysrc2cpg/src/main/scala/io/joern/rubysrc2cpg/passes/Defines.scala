@@ -26,11 +26,15 @@ object Defines {
   // TODO: The following shall be moved out eventually.
   val ModifierRedo: String  = "redo"
   val ModifierRetry: String = "retry"
-  var ModifierNext: String  = "next"
-
   // For un-named identifiers and parameters
-  val TempIdentifier = "tmp"
-  val TempParameter  = "param"
+  val TempIdentifier       = "tmp"
+  val TempParameter        = "param"
+  var ModifierNext: String = "next"
 
   def getBuiltInType(typeInString: String) = s"${GlobalTypes.builtinPrefix}.$typeInString"
+
+  object RubyOperators {
+    val hashInitializer = "<operator>.hashInitializer"
+    val association     = "<operator>.association"
+  }
 }

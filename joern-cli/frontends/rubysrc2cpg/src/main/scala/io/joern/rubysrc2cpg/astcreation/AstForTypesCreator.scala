@@ -1,177 +1,135 @@
 package io.joern.rubysrc2cpg.astcreation
 
-import io.joern.rubysrc2cpg.parser.RubyParser.{
-  ClassDefinitionPrimaryContext,
-  ClassOrModuleReferenceContext,
-  ExpressionExpressionOrCommandContext,
-  ModuleDefinitionPrimaryContext,
-  PrimaryExpressionContext,
-  PseudoVariableIdentifierVariableReferenceContext,
-  ScopedConstantReferenceContext,
-  SelfPseudoVariableIdentifierContext,
-  VariableReferencePrimaryContext
-}
-import io.shiftleft.codepropertygraph.generated.{ModifierTypes, NodeTypes}
+import io.joern.rubysrc2cpg.parser.ParserAst
+import io.joern.rubysrc2cpg.parser.ParserAst.*
 import io.joern.rubysrc2cpg.passes.Defines
+import io.joern.x2cpg.datastructures.Stack.*
 import io.joern.x2cpg.{Ast, ValidationMode}
-import io.shiftleft.codepropertygraph.generated.nodes.*
+import io.shiftleft.codepropertygraph.generated.{DispatchTypes, EvaluationStrategies, Operators}
 import org.antlr.v4.runtime.ParserRuleContext
-import io.joern.x2cpg.utils.*
 
-import scala.collection.mutable
+import scala.util.Try
 
 trait AstForTypesCreator(implicit withSchemaValidation: ValidationMode) { this: AstCreator =>
 
-  // Maps field references of known types
-  protected val fieldReferences = mutable.HashMap.empty[String, Set[ParserRuleContext]]
+  protected def astForModuleDeclaration(node: ModuleDeclaration): Ast = {
+    // TODO: Might be wrong here (hence this placeholder), but I'm assuming modules ~= abstract classes.
+    val classDecl = ClassDeclaration(node.ctx, node.moduleName, None, node.body)
+    astForClassDeclaration(classDecl)
+  }
 
-  def astForClassDeclaration(ctx: ClassDefinitionPrimaryContext): Seq[Ast] = {
-    val baseClassName = if (ctx.classDefinition().expressionOrCommand() != null) {
-      val parentClassNameAst = astForExpressionOrCommand(ctx.classDefinition().expressionOrCommand())
-      val nameNode = parentClassNameAst.head.nodes
-        .filter(node => node.isInstanceOf[NewIdentifier])
-        .head
-        .asInstanceOf[NewIdentifier]
-      Some(nameNode.name)
-    } else {
-      None
+  protected def astForClassDeclaration(node: ClassDeclaration): Ast = {
+    Try(ParserAst(node.className).asInstanceOf[SimpleIdentifier]).toOption match
+      case None =>
+        logger.warn(s"Qualified class names are not supported yet: ${node.className.getText}, skipping")
+        astForUnknown(node)
+      case Some(classNameIdentifier) =>
+        val className = classNameIdentifier.text
+        val inheritsFrom = node.baseClass.fold(List())(ctx =>
+          Try(ParserAst(ctx).asInstanceOf[SimpleIdentifier]).toOption match
+            case None =>
+              logger.warn(s"Qualified base class names are not supported yet: ${ctx.getText}, skipping")
+              List()
+            case Some(baseClassName) =>
+              List(baseClassName.text)
+        )
+        val typeDecl = typeDeclNode(
+          node = node,
+          name = className,
+          fullName = computeClassFullName(className),
+          filename = relativeFilename,
+          code = node.text,
+          astParentType = getEnclosingAstType,
+          astParentFullName = getEnclosingAstFullName,
+          inherits = inheritsFrom,
+          alias = None
+        )
+        methodAstParentStack.push(typeDecl)
+        scope.pushNewScope(typeDecl)
+        // TODO: ctor
+        val classBody =
+          ParserAst(node.body).asInstanceOf[StatementList] // for now (bodyStatement is a superset of stmtList)
+        val classBodyAsts = classBody.statements.flatMap(astsForStatement)
+        scope.popScope()
+        methodAstParentStack.pop()
+        Ast(typeDecl).withChildren(classBodyAsts)
+  }
+
+  protected def astsForFieldDeclarations(node: FieldDeclarations): Seq[Ast] = {
+    node.fields.flatMap(astsForSingleFieldDeclaration(node, _))
+  }
+
+  private def astsForSingleFieldDeclaration(node: FieldDeclarations, nameCtx: ParserRuleContext): Seq[Ast] = {
+    ParserAst(nameCtx) match
+      case nameAsSymbol: StaticLiteralExpression if nameAsSymbol.isSymbol =>
+        val fieldName   = nameAsSymbol.innerText.prepended('@')
+        val memberNode_ = memberNode(nameAsSymbol, fieldName, node.text, Defines.Any)
+        val memberAst   = Ast(memberNode_)
+        val getterAst   = Option.when(node.hasGetter)(astForGetterMethod(node, fieldName))
+        val setterAst   = Option.when(node.hasSetter)(astForSetterMethod(node, fieldName))
+        Seq(memberAst) ++ getterAst.toList ++ setterAst.toList
+      case _ =>
+        logger.warn(s"Unsupported field declaration: ${nameCtx.getText}, skipping")
+        Seq()
+  }
+
+  // creates a `def <name>() { return <fieldName> }` METHOD, for <fieldName> = @<name>.
+  private def astForGetterMethod(node: FieldDeclarations, fieldName: String): Ast = {
+    val name = fieldName.drop(1)
+    val method = methodNode(
+      node = node,
+      name = name,
+      fullName = computeMethodFullName(name),
+      code = s"def $name (...)",
+      signature = None,
+      fileName = relativeFilename,
+      astParentType = Some(getEnclosingAstType),
+      astParentFullName = Some(getEnclosingAstFullName)
+    )
+
+    // TODO: Should it be `return this.@abc`?
+    val returnAst_ = {
+      val returnNode_         = returnNode(node, s"return $fieldName")
+      val fieldNameIdentifier = identifierNode(node, fieldName, fieldName, Defines.Any)
+      returnAst(returnNode_, Seq(Ast(fieldNameIdentifier)))
     }
 
-    val className = ctx.className(baseClassName).getOrElse(Defines.Any)
-    if (className != Defines.Any) {
-      classStack.push(className)
-      val fullName = classStack.reverse.mkString(pathSep)
+    val block_     = blockNode(node)
+    val methodBody = blockAst(block_, List(returnAst_))
 
-      val bodyAst = astForClassBody(ctx.classDefinition().bodyStatement())
-
-      if (classStack.nonEmpty) {
-        classStack.pop()
-      }
-
-      val typeDeclNode = NewTypeDecl()
-        .name(className)
-        .fullName(fullName)
-
-      typeDeclNameToTypeDecl.put(className, typeDeclNode)
-      Seq(Ast(typeDeclNode).withChildren(bodyAst))
-    } else {
-      Seq.empty
-    }
+    methodAst(method, Seq(), methodBody, methodReturnNode(node, Defines.Any))
   }
 
-  def astForClassExpression(ctx: ClassDefinitionPrimaryContext): Seq[Ast] = {
-    // TODO test for this is pending due to lack of understanding to generate an example
-    val astExprOfCommand = astForExpressionOrCommand(ctx.classDefinition().expressionOrCommand())
-    val astBodyStatement = astForBodyStatementContext(ctx.classDefinition().bodyStatement())
-    val blockNode = NewBlock()
-      .code(text(ctx))
-    val bodyBlockAst = blockAst(blockNode, astBodyStatement.toList)
-    astExprOfCommand ++ Seq(bodyBlockAst)
-  }
+  // creates a `def <name>=(x) { <fieldName> = x }` METHOD, for <fieldName> = @<name>
+  private def astForSetterMethod(node: FieldDeclarations, fieldName: String): Ast = {
+    val name = fieldName.drop(1) + "="
+    val method = methodNode(
+      node = node,
+      name = name,
+      fullName = computeMethodFullName(name),
+      code = s"def $name (...)",
+      signature = None,
+      fileName = relativeFilename,
+      astParentType = Some(getEnclosingAstType),
+      astParentFullName = Some(getEnclosingAstFullName)
+    )
 
-  def astForModuleDefinitionPrimaryContext(ctx: ModuleDefinitionPrimaryContext): Seq[Ast] = {
-    val className = ctx.moduleDefinition().classOrModuleReference().classOrModuleName(None)
-
-    if (className != Defines.Any) {
-      classStack.push(className)
-
-      val fullName = classStack.reverse.mkString(pathSep)
-      val namespaceBlock = NewNamespaceBlock()
-        .name(className)
-        .fullName(fullName)
-        .filename(filename)
-
-      val moduleBodyAst = astInFakeMethod(className, fullName, filename, ctx)
-      classStack.pop()
-      Seq(Ast(namespaceBlock).withChildren(moduleBodyAst))
-    } else {
-      Seq.empty
+    val parameter = parameterInNode(node, "x", "x", 1, false, EvaluationStrategies.BY_REFERENCE)
+    val methodBody = {
+      val lhs = identifierNode(node, fieldName, fieldName, Defines.Any)
+      val rhs = identifierNode(node, parameter.name, parameter.name, Defines.Any)
+      val assignmentCall = callNode(
+        node,
+        s"${lhs.code} = ${rhs.code}",
+        Operators.assignment,
+        Operators.assignment,
+        DispatchTypes.STATIC_DISPATCH
+      )
+      val assignmentAst = callAst(assignmentCall, Seq(Ast(lhs), Ast(rhs)))
+      blockAst(blockNode(node), List(assignmentAst))
     }
 
+    methodAst(method, Seq(Ast(parameter)), methodBody, methodReturnNode(node, Defines.Any))
   }
 
-  private def astInFakeMethod(
-    name: String,
-    fullName: String,
-    path: String,
-    ctx: ModuleDefinitionPrimaryContext
-  ): Seq[Ast] = {
-
-    val fakeGlobalTypeDecl = NewTypeDecl()
-      .name(name)
-      .fullName(fullName)
-
-    val bodyAst = astForClassBody(ctx.moduleDefinition().bodyStatement())
-    Seq(Ast(fakeGlobalTypeDecl).withChildren(bodyAst))
-  }
-
-  private def getClassNameScopedConstantReferenceContext(ctx: ScopedConstantReferenceContext): String = {
-    val classTerminalNode = ctx.CONSTANT_IDENTIFIER()
-
-    if (ctx.primary() != null) {
-      val primaryAst = astForPrimaryContext(ctx.primary())
-      val moduleNameNode = primaryAst.head.nodes
-        .filter(node => node.isInstanceOf[NewIdentifier])
-        .head
-        .asInstanceOf[NewIdentifier]
-      val moduleName = moduleNameNode.name
-      moduleName + "." + classTerminalNode.getText
-    } else {
-      classTerminalNode.getText
-    }
-  }
-
-  def membersFromStatementAsts(ast: Ast): Seq[Ast] =
-    ast.nodes
-      .collect { case i: NewIdentifier if i.name.startsWith("@") || i.name.isAllUpperCase => i }
-      .map { i =>
-        val code = ast.root.collect { case c: NewCall => c.code }.getOrElse(i.name)
-        val modifierType = i.name match
-          case x if x.startsWith("@@") => ModifierTypes.STATIC
-          case x if x.isAllUpperCase   => ModifierTypes.FINAL
-          case _                       => ModifierTypes.VIRTUAL
-        val modifierAst = Ast(NewModifier().modifierType(modifierType))
-        Ast(
-          NewMember()
-            .code(code)
-            .name(i.name.replaceAll("@", ""))
-            .typeFullName(i.typeFullName)
-            .lineNumber(i.lineNumber)
-            .columnNumber(i.columnNumber)
-        ).withChild(modifierAst)
-      }
-      .toSeq
-
-  implicit class ClassDefinitionPrimaryContextExt(val ctx: ClassDefinitionPrimaryContext) {
-
-    def hasClassDefinition: Boolean = Option(ctx.classDefinition()).isDefined
-
-    def className(baseClassName: Option[String] = None): Option[String] =
-      Option(ctx.classDefinition().classOrModuleReference()) match {
-        case Some(classOrModuleReferenceCtx) =>
-          Option(classOrModuleReferenceCtx)
-            .map(_.classOrModuleName(baseClassName))
-        case None =>
-          // TODO the below is just to avoid crashes. This needs to be implemented properly
-          None
-      }
-  }
-
-  implicit class ClassOrModuleReferenceContextExt(val ctx: ClassOrModuleReferenceContext) {
-
-    def hasScopedConstantReference: Boolean = Option(ctx.scopedConstantReference()).isDefined
-
-    def classOrModuleName(baseClassName: Option[String] = None): String =
-      Option(ctx) match {
-        case Some(ct) =>
-          if (ct.hasScopedConstantReference)
-            getClassNameScopedConstantReferenceContext(ct.scopedConstantReference())
-          else
-            Option(ct.CONSTANT_IDENTIFIER()).map(_.getText) match {
-              case Some(className) => className
-              case None            => Defines.Any
-            }
-        case None => Defines.Any
-      }
-  }
 }

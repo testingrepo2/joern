@@ -1,8 +1,8 @@
-package io.joern.rubysrc2cpg.querying
+package io.joern.rubysrc2cpg.passes.ast
 
 import io.joern.rubysrc2cpg.testfixtures.RubyCode2CpgFixture
 import io.shiftleft.codepropertygraph.generated.nodes.Method
-import io.shiftleft.semanticcpg.language._
+import io.shiftleft.semanticcpg.language.*
 
 class CallGraphTests extends RubyCode2CpgFixture(withPostProcessing = true) {
 

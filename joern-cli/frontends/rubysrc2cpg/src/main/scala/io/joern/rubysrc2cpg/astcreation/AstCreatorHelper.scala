@@ -1,92 +1,33 @@
 package io.joern.rubysrc2cpg.astcreation
+import io.joern.rubysrc2cpg.parser.ParserAst.*
+import io.shiftleft.codepropertygraph.generated.PropertyNames
 
-import io.joern.x2cpg.{Ast, Defines, ValidationMode}
-import io.joern.rubysrc2cpg.passes.Defines as RubyDefines
-import io.shiftleft.codepropertygraph.generated.{DispatchTypes, EdgeTypes, Operators, nodes}
-import io.shiftleft.codepropertygraph.generated.nodes.{
-  AstNodeNew,
-  NewCall,
-  NewFieldIdentifier,
-  NewMethodParameterIn,
-  NewNode
-}
+trait AstCreatorHelper { this: AstCreator =>
 
-import scala.collection.mutable
-trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) { this: AstCreator =>
+  override def column(node: ParserNode): Option[Integer] = node.column
 
-  import GlobalTypes._
+  override def line(node: ParserNode): Option[Integer] = node.line
+
+  override def columnEnd(node: ParserNode): Option[Integer] = node.columnEnd
+
+  import GlobalTypes.*
+
+  override def lineEnd(node: ParserNode): Option[Integer] = node.lineEnd
 
   def isBuiltin(x: String): Boolean = builtinFunctions.contains(x)
 
   def prefixAsBuiltin(x: String): String = s"$builtinPrefix$pathSep$x"
 
-  def astForAssignment(lhs: NewNode, rhs: NewNode, lineNumber: Option[Integer], colNumber: Option[Integer]): Ast = {
+  def pathSep = "."
 
-    val code = codeOf(lhs) + " = " + codeOf(rhs)
-    val callNode = NewCall()
-      .name(Operators.assignment)
-      .code(code)
-      .dispatchType(DispatchTypes.STATIC_DISPATCH)
-      .lineNumber(lineNumber)
-      .columnNumber(colNumber)
-      .methodFullName(Operators.assignment)
+  protected def getEnclosingAstType: String = methodAstParentStack.head.label()
 
-    callAst(callNode, Seq(Ast(lhs), Ast(rhs)))
-  }
+  // TODO: decide on the proper full name format.
+  protected def computeClassFullName(name: String): String  = s"$getEnclosingAstFullName.$name"
+  protected def computeMethodFullName(name: String): String = s"$getEnclosingAstFullName:$name"
 
-  protected def createFieldAccess(
-    baseNode: NewNode,
-    fieldName: String,
-    lineNumber: Option[Integer],
-    colNumber: Option[Integer]
-  ) = {
-    val fieldIdNode = NewFieldIdentifier()
-      .code(fieldName)
-      .canonicalName(fieldName)
-      .lineNumber(lineNumber)
-      .columnNumber(colNumber)
+  protected def getEnclosingAstFullName: String = methodAstParentStack.head.properties(PropertyNames.FULL_NAME).toString
 
-    val baseNodeCopy = baseNode.copy
-    val code         = codeOf(baseNode) + "." + codeOf(fieldIdNode)
-    val callNode = NewCall()
-      .code(code)
-      .name(Operators.fieldAccess)
-      .methodFullName(Operators.fieldAccess)
-      .dispatchType(DispatchTypes.STATIC_DISPATCH)
-      .lineNumber(lineNumber)
-      .columnNumber(colNumber)
-
-    callAst(callNode, Seq(Ast(baseNodeCopy), Ast(fieldIdNode)))
-  }
-
-  protected def createMethodParameterIn(
-    name: String,
-    lineNumber: Option[Integer] = None,
-    colNumber: Option[Integer] = None,
-    typeFullName: String = RubyDefines.Any,
-    order: Int = -1,
-    index: Int = -1
-  ) = {
-    NewMethodParameterIn()
-      .name(name)
-      .code(name)
-      .lineNumber(lineNumber)
-      .typeFullName(typeFullName)
-      .columnNumber(colNumber)
-      .order(order)
-      .index(index)
-  }
-
-  protected def codeOf(node: NewNode): String = {
-    node.asInstanceOf[AstNodeNew].code
-  }
-
-  def getUnusedVariableNames(usedVariableNames: mutable.HashMap[String, Int], variableName: String): String = {
-    val counter             = usedVariableNames.get(variableName).map(_ + 1).getOrElse(0)
-    val currentVariableName = s"${variableName}_$counter"
-    usedVariableNames.put(variableName, counter)
-    currentVariableName
-  }
 }
 
 object GlobalTypes {

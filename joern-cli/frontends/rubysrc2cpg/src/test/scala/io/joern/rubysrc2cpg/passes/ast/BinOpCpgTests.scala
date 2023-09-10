@@ -1,9 +1,8 @@
 package io.joern.rubysrc2cpg.passes.ast
 
 import io.joern.rubysrc2cpg.testfixtures.RubyCode2CpgFixture
-import io.shiftleft.codepropertygraph.generated.{EvaluationStrategies, NodeTypes, DispatchTypes, Operators, nodes}
+import io.shiftleft.codepropertygraph.generated.{DispatchTypes, Operators}
 import io.shiftleft.semanticcpg.language.*
-import io.shiftleft.semanticcpg.language.types.structure.NamespaceTraversal
 
 class BinOpCpgTests extends RubyCode2CpgFixture {
   val cpg = code("""1 + 2""".stripMargin)
@@ -13,7 +12,7 @@ class BinOpCpgTests extends RubyCode2CpgFixture {
     additionCall.code shouldBe "1 + 2"
     additionCall.dispatchType shouldBe DispatchTypes.STATIC_DISPATCH
     additionCall.lineNumber shouldBe Some(1)
-    // TODO additionCall.columnNumber shouldBe Some(1)
+    additionCall.columnNumber shouldBe Some(0)
   }
 
   "test binOp 'add' ast children" in {

@@ -56,9 +56,13 @@ multipleAssignmentStatement
 
 leftHandSide
     :   variable (EQ primary)?
+        # variableLeftHandSide
     |   primary LBRACK indexingArgumentList? RBRACK
+        # indexingLeftHandSide
     |   primary (DOT | COLON2) (LOCAL_VARIABLE_IDENTIFIER | CONSTANT_IDENTIFIER)
+        # memberAccessLeftHandSide
     |   COLON2 CONSTANT_IDENTIFIER
+        # qualifiedLeftHandSide
     ;
 
 multipleLeftHandSide
@@ -118,21 +122,31 @@ methodOnlyIdentifier
     
 methodInvocationWithoutParentheses
     :   command
+        # commandMethodInvocationWithoutParentheses
     |   chainedCommandWithDoBlock ((DOT | COLON2) methodName commandArgumentList)?
+        # chainedMethodInvocationWithoutParentheses
     |   RETURN primaryValueList
+        # returnMethodInvocationWithoutParentheses
     |   BREAK primaryValueList
+        # breakMethodInvocationWithoutParentheses
     |   NEXT primaryValueList
+        # nextMethodInvocationWithoutParentheses
     |   YIELD primaryValueList
+        # yieldMethodInvocationWithoutParentheses
     ;
 
 command
     :   primary NL? (AMPDOT | DOT | COLON2) methodName commandArgument
+        # memberAccessCommand
     |   methodIdentifier commandArgument
+        # simpleCommand
     ;
 
 commandArgument
     :   commandArgumentList
+        # commandArgumentCommandArgumentList
     |   command
+        # commandCommandArgumentList
     ;
 
 chainedCommandWithDoBlock
@@ -151,10 +165,15 @@ commandWithDoBlock
 
 indexingArgumentList
     :   command
+        # commandIndexingArgumentList
     |   operatorExpressionList COMMA?
+        # operatorExpressionListIndexingArgumentList
     |   operatorExpressionList COMMA splattingArgument
+        # operatorExpressionListWithSplattingArgumentIndexingArgumentList
     |   associationList COMMA?
+        # associationListIndexingArgumentList
     |   splattingArgument
+        # splattingArgumentIndexingArgumentList
     ;
 
 splattingArgument
@@ -172,17 +191,26 @@ operatorExpressionList2
 
 argumentWithParentheses
     :   LPAREN NL* COMMA? NL* RPAREN
+        # emptyArgumentWithParentheses
     |   LPAREN NL* argumentList COMMA? NL* RPAREN
+        # argumentListArgumentWithParentheses
     |   LPAREN NL* operatorExpressionList COMMA NL* chainedCommandWithDoBlock COMMA? NL* RPAREN
+        # operatorExpressionsAndChainedCommandWithBlockArgumentWithParentheses
     |   LPAREN NL* chainedCommandWithDoBlock COMMA? NL* RPAREN
+        # chainedCommandWithDoBlockArgumentWithParentheses
     ;
 
 argumentList
     :   blockArgument
+        # blockArgumentArgumentList
     |   splattingArgument (COMMA NL* blockArgument)?
+        # splattingArgumentArgumentList
     |   operatorExpressionList (COMMA NL* associationList)? (COMMA NL* splattingArgument)? (COMMA NL* blockArgument)?
+        # operatorsArgumentList
     |   associationList (COMMA NL* splattingArgument)? (COMMA NL* blockArgument)?
+        # associationsArgumentList
     |   command
+        # singleCommandArgumentList
     ;
     
 commandArgumentList
@@ -239,7 +267,7 @@ primaryValue
     :   // Assignment expressions
         lhs=variable assignmentOperator NL* rhs=operatorExpression
         # localVariableAssignmentExpression
-    |   primaryValue (DOT | COLON2) methodName assignmentOperator NL* operatorExpression
+    |   primaryValue op=(DOT | COLON2) methodName assignmentOperator NL* operatorExpression
         # attributeAssignmentExpression
     |   COLON2 CONSTANT_IDENTIFIER assignmentOperator NL* operatorExpression
         # constantAssignmentExpression
@@ -253,11 +281,11 @@ primaryValue
         # classDefinition
     |   CLASS LT2 commandOrPrimaryValue (SEMI | NL) bodyStatement END
         # singletonClassDefinition
-    |   MODULE modulePath bodyStatement END
+    |   MODULE classPath bodyStatement END
         # moduleDefinition
     |   DEF definedMethodName methodParameterPart bodyStatement END
         # methodDefinition
-    |   DEF singletonObject (DOT | COLON2) definedMethodName methodParameterPart bodyStatement END
+    |   DEF singletonObject op=(DOT | COLON2) definedMethodName methodParameterPart bodyStatement END
         # singletonMethodDefinition
     |   DEF definedMethodName (LPAREN parameterList? RPAREN)? EQ NL* commandOrPrimaryValue
         # endlessMethodDefinition
@@ -289,9 +317,9 @@ primaryValue
         # superWithParentheses
     |   SUPER argumentList? block?
         # superWithoutParentheses
-    |   IS_DEFINED LPAREN expressionOrCommand RPAREN
+    |   isDefinedKeyword LPAREN expressionOrCommand RPAREN
         # isDefinedExpression
-    |   IS_DEFINED primaryValue
+    |   isDefinedKeyword primaryValue
         # isDefinedCommand
     |   methodOnlyIdentifier
         # methodCallExpression
@@ -306,7 +334,7 @@ primaryValue
     |   LBRACK NL* indexingArgumentList? NL* RBRACK
         # bracketedArrayLiteral
     |   QUOTED_NON_EXPANDED_STRING_ARRAY_LITERAL_START quotedNonExpandedArrayElementList? QUOTED_NON_EXPANDED_STRING_ARRAY_LITERAL_END
-        # quotedNonExpandeddStringArrayLiteral
+        # quotedNonExpandedStringArrayLiteral
     |   QUOTED_NON_EXPANDED_SYMBOL_ARRAY_LITERAL_START quotedNonExpandedArrayElementList? QUOTED_NON_EXPANDED_SYMBOL_ARRAY_LITERAL_END
         # quotedNonExpandedSymbolArrayLiteral
     |   QUOTED_EXPANDED_STRING_ARRAY_LITERAL_START quotedExpandedArrayElementList? QUOTED_EXPANDED_STRING_ARRAY_LITERAL_END
@@ -315,11 +343,11 @@ primaryValue
         # quotedExpandedSymbolArrayLiteral
     |   LCURLY NL* (associationList COMMA?)? NL* RCURLY
         # hashLiteral
-    |   (PLUS | MINUS)? unsignedNumericLiteral
+    |   sign=(PLUS | MINUS)? unsignedNumericLiteral
         # numericLiteral
-    |   singleQuotedString (singleQuotedString | doubleQuotedString)*
+    |   singleQuotedString singleOrDoubleQuotedString*
         # singleQuotedStringExpression
-    |   doubleQuotedString (doubleQuotedString | singleQuotedString)*
+    |   doubleQuotedString singleOrDoubleQuotedString*
         # doubleQuotedStringExpression
     |   QUOTED_NON_EXPANDED_STRING_LITERAL_START NON_EXPANDED_LITERAL_CHARACTER_SEQUENCE? QUOTED_NON_EXPANDED_STRING_LITERAL_END
         # quotedNonExpandedStringLiteral
@@ -340,7 +368,7 @@ primaryValue
         // Member accesses
     |   primaryValue LBRACK indexingArgumentList? RBRACK
         # indexingAccessExpression
-    |   primaryValue NL* (AMPDOT | DOT | COLON2) NL* methodName argumentWithParentheses? block?
+    |   primaryValue NL* op=(AMPDOT | DOT | COLON2) NL* methodName argumentWithParentheses? block?
         # memberAccessExpression
     
         // Unary and binary expressions
@@ -385,7 +413,9 @@ commandOrPrimaryValue
 
 block
     :   LCURLY NL* blockParameter? compoundStatement RCURLY
+        # curlyBracesBlock
     |   doBlock
+        # doBlockBlock
     ;
 
 doBlock
@@ -399,7 +429,9 @@ blockParameter
 
 blockParameterList
     :   leftHandSide
+        # singleElementBlockParameterList
     |   multipleLeftHandSide
+        # multipleElementBlockParameterList
     ;
 
 thenClause
@@ -477,7 +509,14 @@ parameterList
     ;
 
 mandatoryOrOptionalParameterList
-    :   (mandatoryParameter | optionalParameter) (COMMA NL* (mandatoryParameter | optionalParameter))*
+    :   mandatoryOrOptionalParameter (COMMA NL* mandatoryOrOptionalParameter)*
+    ;
+    
+mandatoryOrOptionalParameter
+    :   mandatoryParameter
+        # mandatoryMandatoryOrOptionalParameter
+    |   optionalParameter
+        # optionalMandatoryOrOptionalParameter
     ;
 
 mandatoryParameter
@@ -509,36 +548,19 @@ procParameterName
     ;
 
 classPath
-    :   topClassPath
-    |   className
-    |   classPath COLON2 className
-    ;
-
-className
-    :   CONSTANT_IDENTIFIER
-    ;
-
-topClassPath
-    :   COLON2 className
+    :   COLON2 CONSTANT_IDENTIFIER
+        # topClassPath
+    |   CONSTANT_IDENTIFIER
+        # className
+    |   classPath COLON2 CONSTANT_IDENTIFIER
+        # nestedClassPath
     ;
 
 singletonObject
     :   variableReference
+        #variableReferenceSingletonObject
     |   LPAREN expressionOrCommand RPAREN
-    ;
-
-modulePath
-    :   topModulePath
-    |   moduleName
-    |   modulePath COLON2 moduleName
-    ;
-
-moduleName
-    :   CONSTANT_IDENTIFIER
-    ;
-
-topModulePath
-    :   COLON2 moduleName
+        #expressionSingletonObject
     ;
 
 variableReference
@@ -570,6 +592,11 @@ regexpLiteralContent
 
 singleQuotedString
     :   SINGLE_QUOTED_STRING_LITERAL
+    ;
+
+singleOrDoubleQuotedString
+    :   singleQuotedString
+    |   doubleQuotedString
     ;
 
 doubleQuotedString
@@ -629,14 +656,21 @@ quotedExpandedArrayElementList
 
 symbol
     :   SYMBOL_LITERAL
+        # pureSymbolLiteral
     |   COLON singleQuotedString
+        # singleQuotedSymbolLiteral
     |   COLON doubleQuotedString
+        # doubleQuotedSymbolLiteral
     ;
 
 
 // --------------------------------------------------------
 // Commons
 // --------------------------------------------------------
+
+isDefinedKeyword
+    :   IS_DEFINED
+    ;
 
 assignmentOperator
     :   EQ
@@ -653,29 +687,47 @@ statementModifier
 
 variable
     :   CONSTANT_IDENTIFIER
+        # constantIdentifierVariable
     |   GLOBAL_VARIABLE_IDENTIFIER
+        # globalIdentifierVariable
     |   CLASS_VARIABLE_IDENTIFIER
+        # classIdentifierVariable
     |   INSTANCE_VARIABLE_IDENTIFIER
+        # instanceIdentifierVariable
     |   LOCAL_VARIABLE_IDENTIFIER
+        # localIdentifierVariable
     ;
 
 pseudoVariable
     :   NIL
+        # nilPseudoVariable
     |   TRUE
+        # truePseudoVariable
     |   FALSE
+        # falsePseudoVariable
     |   SELF
+        # selfPseudoVariable
     |   LINE__
+        # linePseudoVariable
     |   FILE__
+        # filePseudoVariable
     |   ENCODING__
+        # encodingPseudoVariable
     ;
 
 unsignedNumericLiteral
     :   DECIMAL_INTEGER_LITERAL
+        # decimalUnsignedLiteral
     |   BINARY_INTEGER_LITERAL
+        # binaryUnsignedLiteral
     |   OCTAL_INTEGER_LITERAL
+        # octalUnsignedLiteral
     |   HEXADECIMAL_INTEGER_LITERAL
+        # hexadecimalUnsignedLiteral
     |   FLOAT_LITERAL_WITHOUT_EXPONENT
+        # floatWithoutExponentUnsignedLiteral
     |   FLOAT_LITERAL_WITH_EXPONENT
+        # floatWithExponentUnsignedLiteral
     ;
 
 unaryOperator

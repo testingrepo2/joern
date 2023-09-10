@@ -1,10 +1,9 @@
 package io.joern.rubysrc2cpg.passes.ast
 
 import io.joern.rubysrc2cpg.testfixtures.RubyCode2CpgFixture
-import io.shiftleft.codepropertygraph.generated.ModifierTypes
-import io.shiftleft.semanticcpg.language.*
 import io.joern.x2cpg.Defines as XDefines
-import io.shiftleft.codepropertygraph.generated.Operators
+import io.shiftleft.codepropertygraph.generated.{ModifierTypes, Operators}
+import io.shiftleft.semanticcpg.language.*
 
 class TypeDeclAstCreationPassTest extends RubyCode2CpgFixture {
 
@@ -17,7 +16,7 @@ class TypeDeclAstCreationPassTest extends RubyCode2CpgFixture {
           |""".stripMargin)
       val List(myClass) = cpg.typeDecl.nameExact("MyClass").l
       myClass.name shouldBe "MyClass"
-      myClass.fullName shouldBe "Test0.rb::program.MyClass"
+      myClass.fullName shouldBe "Test0.rb:<global>::program.MyClass"
     }
 
     // TODO: Need to be fixed.
